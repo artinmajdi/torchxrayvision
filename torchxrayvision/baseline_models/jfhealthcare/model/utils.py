@@ -11,7 +11,7 @@ def get_norm(norm_type, num_features, num_groups=32, eps=1e-5):
         return nn.InstanceNorm2d(num_features, eps=eps,
                                  affine=True, track_running_stats=True)
     else:
-        raise Exception('Unknown Norm Function : {}'.format(norm_type))
+        raise Exception(f'Unknown Norm Function : {norm_type}')
 
 
 def get_optimizer(params, cfg):
@@ -28,7 +28,7 @@ def get_optimizer(params, cfg):
         return RMSprop(params, lr=cfg.lr, momentum=cfg.momentum,
                        weight_decay=cfg.weight_decay)
     else:
-        raise Exception('Unknown optimizer : {}'.format(cfg.optimizer))
+        raise Exception(f'Unknown optimizer : {cfg.optimizer}')
 
 
 def tensor2numpy(input_tensor):

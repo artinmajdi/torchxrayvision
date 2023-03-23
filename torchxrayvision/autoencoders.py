@@ -6,13 +6,14 @@ import sys
 import requests
 
 
-model_urls = {}
-model_urls['101-elastic'] = {
-    "description": 'This model was trained on the datasets: nih pc rsna mimic_ch chex datasets.',
-    "weights_url": 'https://github.com/mlmed/torchxrayvision/releases/download/v1/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt',
-    "image_range": [-1024, 1024],
-    "resolution": 224,
-    "class": "ResNetAE101"
+model_urls = {
+    '101-elastic': {
+        "description": 'This model was trained on the datasets: nih pc rsna mimic_ch chex datasets.',
+        "weights_url": 'https://github.com/mlmed/torchxrayvision/releases/download/v1/nihpcrsnamimic_ch-resnet101-2-ae-test2-elastic-e250.pt',
+        "image_range": [-1024, 1024],
+        "resolution": 224,
+        "class": "ResNetAE101",
+    }
 }
 
 
@@ -136,7 +137,7 @@ class _ResNetAE(nn.Module):
 
     def __repr__(self):
         if self.weights != None:
-            return "XRV-ResNetAE-{}".format(self.weights)
+            return f"XRV-ResNetAE-{self.weights}"
         else:
             return "XRV-ResNetAE"
 
@@ -147,12 +148,11 @@ class _ResNetAE(nn.Module):
                 nn.Conv2d(self.in_channels, init_channels * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(init_channels * block.expansion),
             )
-        layers = []
-        layers.append(block(self.in_channels, init_channels, stride, downsample))
+        layers = [block(self.in_channels, init_channels, stride, downsample)]
         self.in_channels = init_channels * block.expansion
-        for i in range(1, num_layer):
-            layers.append(block(self.in_channels, init_channels))
-
+        layers.extend(
+            block(self.in_channels, init_channels) for _ in range(1, num_layer)
+        )
         return nn.Sequential(*layers)
 
     def _make_up_block(self, block, init_channels, num_layer, stride=1):
@@ -163,10 +163,9 @@ class _ResNetAE(nn.Module):
                 nn.ConvTranspose2d(self.in_channels, init_channels * 2, kernel_size=1, stride=stride, bias=False, output_padding=1),
                 nn.BatchNorm2d(init_channels * 2),
             )
-        layers = []
-        for i in range(1, num_layer):
-            layers.append(block(self.in_channels, init_channels, 4))
-
+        layers = [
+            block(self.in_channels, init_channels, 4) for _ in range(1, num_layer)
+        ]
         layers.append(block(self.in_channels, init_channels, 2, stride, upsample))
         self.in_channels = init_channels * 2
         return nn.Sequential(*layers)
@@ -176,7 +175,9 @@ class _ResNetAE(nn.Module):
         if check_resolution and hasattr(self, 'weights_metadata'):
             resolution = self.weights_metadata['resolution']
             if (x.shape[2] != resolution) | (x.shape[3] != resolution):
-                raise ValueError("Input size ({}x{}) is not the native resolution ({}x{}) for this model. Set check_resolution=False on the encode function to override this error.".format(x.shape[2], x.shape[3], resolution, resolution))
+                raise ValueError(
+                    f"Input size ({x.shape[2]}x{x.shape[3]}) is not the native resolution ({resolution}x{resolution}) for this model. Set check_resolution=False on the encode function to override this error."
+                )
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -220,11 +221,11 @@ def ResNetAE101(**kwargs):
 
 def ResNetAE(weights=None):
 
-    if weights == None:
+    if weights is None:
         return ResNetAE101()
 
-    if not weights in model_urls.keys():
-        raise Exception("weights value must be in {}".format(list(model_urls.keys())))
+    if weights not in model_urls.keys():
+        raise Exception(f"weights value must be in {list(model_urls.keys())}")
 
     method_to_call = globals()[model_urls[weights]["class"]]
     ae = method_to_call()
@@ -237,7 +238,7 @@ def ResNetAE(weights=None):
 
     if not os.path.isfile(weights_filename_local):
         print("Downloading weights...")
-        print("If this fails you can run `wget {} -O {}`".format(url, weights_filename_local))
+        print(f"If this fails you can run `wget {url} -O {weights_filename_local}`")
         pathlib.Path(weights_storage_folder).mkdir(parents=True, exist_ok=True)
         download(url, weights_filename_local)
 
@@ -268,10 +269,10 @@ def download(url, filename):
         else:
             downloaded = 0
             total = int(total)
-            for data in response.iter_content(chunk_size=max(int(total / 1000), 1024 * 1024)):
+            for data in response.iter_content(chunk_size=max(total // 1000, 1024 * 1024)):
                 downloaded += len(data)
                 f.write(data)
                 done = int(50 * downloaded / total)
-                sys.stdout.write('\r[{}{}]'.format('█' * done, '.' * (50 - done)))
+                sys.stdout.write(f"\r[{'█' * done}{'.' * (50 - done)}]")
                 sys.stdout.flush()
     sys.stdout.write('\n')

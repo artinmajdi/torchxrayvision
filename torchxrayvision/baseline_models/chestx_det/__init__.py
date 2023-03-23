@@ -63,7 +63,9 @@ class PSPNet(nn.Module):
 
         if not os.path.isfile(self.weights_filename_local):
             print("Downloading weights...")
-            print("If this fails you can run `wget {} -O {}`".format(url, self.weights_filename_local))
+            print(
+                f"If this fails you can run `wget {url} -O {self.weights_filename_local}`"
+            )
             pathlib.Path(weights_storage_folder).mkdir(parents=True, exist_ok=True)
             download(url, self.weights_filename_local)
 
@@ -93,9 +95,7 @@ class PSPNet(nn.Module):
 
         # now between [0,1] for this model preprocessing
         x = self.transform(x)
-        y = self.model(x)
-
-        return y
+        return self.model(x)
 
     def __repr__(self):
         return "chestx-det-pspnet"
@@ -112,10 +112,10 @@ def download(url, filename):
         else:
             downloaded = 0
             total = int(total)
-            for data in response.iter_content(chunk_size=max(int(total / 1000), 1024 * 1024)):
+            for data in response.iter_content(chunk_size=max(total // 1000, 1024 * 1024)):
                 downloaded += len(data)
                 f.write(data)
                 done = int(50 * downloaded / total)
-                sys.stdout.write('\r[{}{}]'.format('█' * done, '.' * (50 - done)))
+                sys.stdout.write(f"\r[{'█' * done}{'.' * (50 - done)}]")
                 sys.stdout.flush()
     sys.stdout.write('\n')

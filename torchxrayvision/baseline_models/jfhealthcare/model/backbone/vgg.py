@@ -51,17 +51,17 @@ class VGG(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')  # noqa
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
+            elif (
+                isinstance(m, nn.BatchNorm2d)
+                or not isinstance(m, nn.Linear)
+                and isinstance(m, nn.GroupNorm)
+                or not isinstance(m, nn.Linear)
+                and isinstance(m, nn.InstanceNorm2d)
+            ):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.GroupNorm):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.InstanceNorm2d):
-                nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
 

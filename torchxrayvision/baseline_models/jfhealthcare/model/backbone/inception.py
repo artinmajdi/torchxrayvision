@@ -25,23 +25,21 @@ def inception_v3(cfg, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    if cfg.pretrained:
-        if 'transform_input' not in kwargs:
-            kwargs['transform_input'] = True
-        model = Inception3(norm_type=cfg.norm_type, **kwargs)
+    if not cfg.pretrained:
+        return Inception3(norm_type=cfg.norm_type, **kwargs)
+    if 'transform_input' not in kwargs:
+        kwargs['transform_input'] = True
+    model = Inception3(norm_type=cfg.norm_type, **kwargs)
 
-        pattern = re.compile(r'^(.*bn\d\.(?:weight|bias|running_mean|running_var))$')  # noqa
-        state_dict = model_zoo.load_url(model_urls['inception_v3_google'])
-        for key in list(state_dict.keys()):
-            res = pattern.match(key)
-            if res:
-                new_key = res.group(1).replace('bn', 'norm')
-                state_dict[new_key] = state_dict[key]
-                del state_dict[key]
-        model.load_state_dict(state_dict, strict=False)
-        return model
-
-    return Inception3(norm_type=cfg.norm_type, **kwargs)
+    pattern = re.compile(r'^(.*bn\d\.(?:weight|bias|running_mean|running_var))$')  # noqa
+    state_dict = model_zoo.load_url(model_urls['inception_v3_google'])
+    for key in list(state_dict.keys()):
+        if res := pattern.match(key):
+            new_key = res[1].replace('bn', 'norm')
+            state_dict[new_key] = state_dict[key]
+            del state_dict[key]
+    model.load_state_dict(state_dict, strict=False)
+    return model
 
 
 class Inception3(nn.Module):
@@ -77,7 +75,7 @@ class Inception3(nn.Module):
         self.fc = nn.Linear(2048, num_classes)
 
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
                 import scipy.stats as stats
                 stddev = m.stddev if hasattr(m, 'stddev') else 0.1
                 X = stats.truncnorm(-2, 2, scale=stddev)

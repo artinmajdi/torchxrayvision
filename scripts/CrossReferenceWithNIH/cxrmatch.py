@@ -25,12 +25,11 @@ cxr14_files=glob.glob(os.path.join(cxr_14_image_path,'*.png'))
 print("There are",len(cxr14_files),"files")
 cxr14_metadata=pd.read_csv(cxr_14_csv_path)
 
-cxr14_orig=dict()
 print("Organize cxr14 metadata")
-for _,row in tqdm.tqdm(cxr14_metadata.iterrows()):
-    cxr14_orig[row["Image Index"]]=row.to_dict()
-
-
+cxr14_orig = {
+    row["Image Index"]: row.to_dict()
+    for _, row in tqdm.tqdm(cxr14_metadata.iterrows())
+}
 rsna_zip='/tmp/datapath/rsna-pneumonia/rsna-pneumonia-detection-challenge.zip'
 with zipfile.ZipFile(rsna_zip) as zf:
     rsna_train_labels=pd.read_csv(BytesIO(zf.read('stage_2_train_labels.csv')))
@@ -44,7 +43,7 @@ with zipfile.ZipFile(rsna_zip) as zf:
 #    name=pathlib.Path(f).stem
 #    cxr14data[name]=d
 
-rsna_info=dict()
+rsna_info = {}
 print("Making rsna image index")
 for i,(_,row) in tqdm.tqdm(enumerate(rsna_detailed_class_info.iterrows())):
     if row['patientId'] not in rsna_info:
@@ -56,9 +55,9 @@ print("Performing file matching")
 with zipfile.ZipFile(rsna_zip) as zf:
     nitems=len(rsna_info.items())
     pbar_outer=tqdm.tqdm(enumerate(rsna_info.items()))
-    for i,(k,v) in pbar_outer:
+    for i, (k, v) in pbar_outer:
         pbar_outer.set_description(k)
-        f="stage_2_train_images/%s.dcm"%k
+        f = f"stage_2_train_images/{k}.dcm"
         fd=pydicom.filereader.dcmread(BytesIO(zf.read(f)))
         rsna_img=fd.pixel_array
         v['mse']=np.inf
