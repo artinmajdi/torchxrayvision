@@ -51,7 +51,9 @@ def normalize(img, maxval, reshape=False):
     """Scales images to be roughly [-1024 1024]."""
 
     if img.max() > maxval:
-        raise Exception("max image value ({}) higher than expected bound ({}).".format(img.max(), maxval))
+        raise Exception(
+            f"max image value ({img.max()}) higher than expected bound ({maxval})."
+        )
 
     img = (2 * (img.astype(np.float32) / maxval) - 1.) * 1024
 
@@ -106,9 +108,8 @@ def relabel_dataset(pathologies, dataset, silent=False):
     Use this to align with the output of a network.
     """
     will_drop = set(dataset.pathologies).difference(pathologies)
-    if will_drop != set():
-        if not silent:
-            print("{} will be dropped".format(will_drop))
+    if will_drop != set() and not silent:
+        print(f"{will_drop} will be dropped")
     new_labels = []
     dataset.pathologies = list(dataset.pathologies)
     for pathology in pathologies:
@@ -117,7 +118,7 @@ def relabel_dataset(pathologies, dataset, silent=False):
             new_labels.append(dataset.labels[:, pathology_idx])
         else:
             if not silent:
-                print("{} doesn't exist. Adding nans instead.".format(pathology))
+                print(f"{pathology} doesn't exist. Adding nans instead.")
             values = np.empty(dataset.labels.shape[0])
             values.fill(np.nan)
             new_labels.append(values)
@@ -212,12 +213,12 @@ class MergeDataset(Dataset):
         object.__setattr__(self, name, value)
 
     def string(self):
-        s = self.__class__.__name__ + " num_samples={}\n".format(len(self))
+        s = self.__class__.__name__ + f" num_samples={len(self)}\n"
         for i, d in enumerate(self.datasets):
             if i < len(self.datasets) - 1:
-                s += "├{} ".format(i) + d.string().replace("\n", "\n|  ") + "\n"
+                s += f"├{i} " + d.string().replace("\n", "\n|  ") + "\n"
             else:
-                s += "└{} ".format(i) + d.string().replace("\n", "\n   ") + "\n"
+                s += f"└{i} " + d.string().replace("\n", "\n   ") + "\n"
         return s
 
     def __len__(self):
@@ -251,7 +252,12 @@ class FilterDataset(Dataset):
         self.csv = self.dataset.csv.iloc[self.idxs]
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={}\n".format(len(self)) + "└ of " + self.dataset.string().replace("\n", "\n  ")
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)}\n"
+            + "└ of "
+            + self.dataset.string().replace("\n", "\n  ")
+        )
 
     def __len__(self):
         return len(self.idxs)
@@ -283,7 +289,12 @@ class SubsetDataset(Dataset):
         object.__setattr__(self, name, value)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={}\n".format(len(self)) + "└ of " + self.dataset.string().replace("\n", "\n  ")
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)}\n"
+            + "└ of "
+            + self.dataset.string().replace("\n", "\n  ")
+        )
 
     def __len__(self):
         return len(self.idxs)
@@ -359,9 +370,10 @@ class NIH_Dataset(Dataset):
         ####### pathology masks ########
         # Get our classes.
         self.labels = []
-        for pathology in self.pathologies:
-            self.labels.append(self.csv["Finding Labels"].str.contains(pathology).values)
-
+        self.labels.extend(
+            self.csv["Finding Labels"].str.contains(pathology).values
+            for pathology in self.pathologies
+        )
         self.labels = np.asarray(self.labels).T
         self.labels = self.labels.astype(np.float32)
 
@@ -381,16 +393,16 @@ class NIH_Dataset(Dataset):
         self.csv['sex_female'] = self.csv['Patient Gender'] == 'F'
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['Image Index'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
@@ -498,10 +510,7 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.csv = self.csv.reset_index()
 
         # Get our classes.
-        self.labels = []
-        self.labels.append(self.csv["Target"].values)
-        self.labels.append(self.csv["Target"].values)  # same labels for both
-
+        self.labels = [self.csv["Target"].values, self.csv["Target"].values]
         # set if we have masks
         self.csv["has_masks"] = ~np.isnan(self.csv["x"])
 
@@ -517,16 +526,16 @@ class RSNA_Pneumonia_Dataset(Dataset):
         self.csv["patientid"] = self.csv["patientId"].astype(str)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['patientId'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid + self.extension)
 
@@ -647,16 +656,16 @@ class NIH_Google_Dataset(Dataset):
         self.pathologies = list(self.pathologies)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['Image Index'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
@@ -719,23 +728,23 @@ class PC_Dataset(Dataset):
 
         self.pathologies = sorted(self.pathologies)
 
-        mapping = dict()
-
-        mapping["Infiltration"] = ["infiltrates",
-                                   "interstitial pattern",
-                                   "ground glass pattern",
-                                   "reticular interstitial pattern",
-                                   "reticulonodular interstitial pattern",
-                                   "alveolar pattern",
-                                   "consolidation",
-                                   "air bronchogram"]
-        mapping["Pleural_Thickening"] = ["pleural thickening"]
-        mapping["Consolidation"] = ["air bronchogram"]
-        mapping["Hilar Enlargement"] = ["adenopathy",
-                                        "pulmonary artery enlargement"]
-        mapping["Support Devices"] = ["device",
-                                      "pacemaker"]
-        mapping["Tube'"] = ["stent'"]  # the ' is to select findings which end in that word
+        mapping = {
+            "Infiltration": [
+                "infiltrates",
+                "interstitial pattern",
+                "ground glass pattern",
+                "reticular interstitial pattern",
+                "reticulonodular interstitial pattern",
+                "alveolar pattern",
+                "consolidation",
+                "air bronchogram",
+            ],
+            "Pleural_Thickening": ["pleural thickening"],
+            "Consolidation": ["air bronchogram"],
+            "Hilar Enlargement": ["adenopathy", "pulmonary artery enlargement"],
+            "Support Devices": ["device", "pacemaker"],
+            "Tube'": ["stent'"],
+        }
 
         self.imgpath = imgpath
         self.transform = transform
@@ -773,7 +782,7 @@ class PC_Dataset(Dataset):
             self.csv = self.csv.groupby("PatientID").first().reset_index()
 
         # Filter out age < 10 (paper published 2019)
-        self.csv = self.csv[(2019 - self.csv.PatientBirth > 10)]
+        self.csv = self.csv[self.csv.PatientBirth < 2009]
 
         # Get our classes.
         self.labels = []
@@ -806,16 +815,16 @@ class PC_Dataset(Dataset):
         self.csv['sex_female'] = self.csv['PatientSex_DICOM'] == 'F'
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['ImageID'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
@@ -937,16 +946,16 @@ class CheX_Dataset(Dataset):
         self.csv['sex_female'] = self.csv['Sex'] == 'Female'
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['Path'].iloc[idx]
         imgid = imgid.replace("CheXpert-v1.0-small/", "")
         img_path = os.path.join(self.imgpath, imgid)
@@ -1051,21 +1060,27 @@ class MIMIC_Dataset(Dataset):
         self.csv["patientid"] = self.csv["subject_id"].astype(str)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         subjectid = str(self.csv.iloc[idx]["subject_id"])
         studyid = str(self.csv.iloc[idx]["study_id"])
         dicom_id = str(self.csv.iloc[idx]["dicom_id"])
 
-        img_path = os.path.join(self.imgpath, "p" + subjectid[:2], "p" + subjectid, "s" + studyid, dicom_id + ".jpg")
+        img_path = os.path.join(
+            self.imgpath,
+            "p" + subjectid[:2],
+            f"p{subjectid}",
+            f"s{studyid}",
+            f"{dicom_id}.jpg",
+        )
         img = imread(img_path)
 
         sample["img"] = normalize(img, maxval=255, reshape=True)
@@ -1123,11 +1138,11 @@ class Openi_Dataset(Dataset):
 
         self.pathologies = sorted(self.pathologies)
 
-        mapping = dict()
-
-        mapping["Pleural_Thickening"] = ["pleural thickening"]
-        mapping["Infiltration"] = ["Infiltrate"]
-        mapping["Atelectasis"] = ["Atelectases"]
+        mapping = {
+            "Pleural_Thickening": ["pleural thickening"],
+            "Infiltration": ["Infiltrate"],
+            "Atelectasis": ["Atelectases"],
+        }
 
         # Load data
         self.xmlpath = xmlpath
@@ -1147,11 +1162,12 @@ class Openi_Dataset(Dataset):
                 labels_a = "|".join(np.unique(labels_a))
                 image_nodes = root.findall(".//parentImage")
                 for image in image_nodes:
-                    sample = {}
-                    sample["uid"] = uid
-                    sample["imageid"] = image.attrib["id"]
-                    sample["labels_major"] = labels_m
-                    sample["labels_automatic"] = labels_a
+                    sample = {
+                        "uid": uid,
+                        "imageid": image.attrib["id"],
+                        "labels_major": labels_m,
+                        "labels_automatic": labels_a,
+                    }
                     samples.append(sample)
 
         self.csv = pd.DataFrame(samples)
@@ -1201,16 +1217,13 @@ class Openi_Dataset(Dataset):
         self.csv["patientid"] = self.csv["uid"].astype(str)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={}".format(len(self))
+        return self.__class__.__name__ + f" num_samples={len(self)}"
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imageid = self.csv.iloc[idx].imageid
         img_path = os.path.join(self.imgpath, imageid + ".png")
         img = imread(img_path)
@@ -1300,16 +1313,16 @@ class COVID19_Dataset(Dataset):
         self.csv["offset_day_int"] = self.csv["offset"]
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['filename'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid)
         img = imread(img_path)
@@ -1383,13 +1396,13 @@ class NLMTB_Dataset(Dataset):
         self.transform = transform
         self.data_aug = data_aug
 
-        file_list = []
         source_list = []
 
-        for fname in sorted(os.listdir(os.path.join(self.imgpath, "CXR_png"))):
-            if fname.endswith(".png"):
-                file_list.append(fname)
-
+        file_list = [
+            fname
+            for fname in sorted(os.listdir(os.path.join(self.imgpath, "CXR_png")))
+            if fname.endswith(".png")
+        ]
         self.csv = pd.DataFrame({"fname": file_list})
 
         # Label is the last digit on the simage filename
@@ -1402,17 +1415,17 @@ class NLMTB_Dataset(Dataset):
         self.pathologies = ["Tuberculosis"]
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
 
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         item = self.csv.iloc[idx]
         img_path = os.path.join(self.imgpath, "CXR_png", item["fname"])
         img = imread(img_path)
@@ -1457,8 +1470,7 @@ class SIIM_Pneumothorax_Dataset(Dataset):
 
         self.pathologies = ["Pneumothorax"]
 
-        self.labels = []
-        self.labels.append(self.csv[" EncodedPixels"] != "-1")
+        self.labels = [self.csv[" EncodedPixels"] != "-1"]
         self.labels = np.asarray(self.labels).T
         self.labels = self.labels.astype(np.float32)
 
@@ -1468,7 +1480,7 @@ class SIIM_Pneumothorax_Dataset(Dataset):
 
         # To figure out the paths
         # TODO: make faster
-        if not ("siim_file_map" in _cache_dict):
+        if "siim_file_map" not in _cache_dict:
             file_map = {}
             for root, directories, files in os.walk(self.imgpath, followlinks=False):
                 for filename in files:
@@ -1478,16 +1490,16 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         self.file_map = _cache_dict["siim_file_map"]
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} data_aug={}".format(len(self), self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['ImageId'].iloc[idx]
         img_path = self.file_map[imgid + ".dcm"]
 
@@ -1518,7 +1530,7 @@ class SIIM_Pneumothorax_Dataset(Dataset):
         def rle2mask(rle, width, height):
             mask = np.zeros(width * height)
             array = np.asarray([int(x) for x in rle.split()])
-            starts = array[0::2]
+            starts = array[::2]
             lengths = array[1::2]
 
             current_position = 0
@@ -1597,10 +1609,10 @@ class VinBrain_Dataset(Dataset):
 
         self.pathologies = sorted(np.unique(self.pathologies))
 
-        self.mapping = dict()
-        self.mapping["Pleural_Thickening"] = ["Pleural thickening"]
-        self.mapping["Effusion"] = ["Pleural effusion"]
-
+        self.mapping = {
+            "Pleural_Thickening": ["Pleural thickening"],
+            "Effusion": ["Pleural effusion"],
+        }
         # Load data
         self.check_paths_exist()
         self.rawcsv = pd.read_csv(self.csvpath)
@@ -1621,16 +1633,16 @@ class VinBrain_Dataset(Dataset):
         self.csv = self.csv.reset_index()
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv['image_id'].iloc[idx]
         img_path = os.path.join(self.imgpath, imgid + ".dicom")
 
@@ -1653,9 +1665,7 @@ class VinBrain_Dataset(Dataset):
 
         if mode == "MONOCHROME1":
             img = -1 * img + 2**float(bitdepth)
-        elif mode == "MONOCHROME2":
-            pass
-        else:
+        elif mode != "MONOCHROME2":
             raise Exception("Unknown Photometric Interpretation mode")
 
         sample["img"] = normalize(img, maxval=2**float(bitdepth), reshape=True)
@@ -1721,10 +1731,7 @@ class StonyBrookCOVID_Dataset(Dataset):
         self.csv["Geographic Extent"] = (self.csv["Total GEOGRAPHIC"] + self.csv["Total GEOGRAPHIC.1"]) / 2
         self.csv["Lung Opacity"] = (self.csv["Total OPACITY"] + self.csv["Total OPACITY.1"]) / 2
 
-        self.labels = []
-        self.labels.append(self.csv["Geographic Extent"])
-        self.labels.append(self.csv["Lung Opacity"])
-
+        self.labels = [self.csv["Geographic Extent"], self.csv["Lung Opacity"]]
         self.labels = np.asarray(self.labels).T
         self.labels = self.labels.astype(np.float32)
 
@@ -1744,17 +1751,14 @@ class StonyBrookCOVID_Dataset(Dataset):
         self.limit_to_selected_views(views)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={}".format(len(self))
+        return self.__class__.__name__ + f" num_samples={len(self)}"
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
-
-        img_path = os.path.join(self.imgpath, str(idx) + ".jpg")
+        sample = {"idx": idx, "lab": self.labels[idx]}
+        img_path = os.path.join(self.imgpath, f"{str(idx)}.jpg")
         img = imread(img_path)
 
         sample["img"] = normalize(img, maxval=255, reshape=True)
@@ -1795,8 +1799,7 @@ class ObjectCXR_Dataset(Dataset):
         # Load data
         self.csv = pd.read_csv(self.csvpath)
 
-        self.labels = []
-        self.labels.append(~self.csv["annotation"].isnull())
+        self.labels = [~self.csv["annotation"].isnull()]
         self.labels = np.asarray(self.labels).T
         self.labels = self.labels.astype(np.float32)
 
@@ -1807,16 +1810,17 @@ class ObjectCXR_Dataset(Dataset):
         self.imgzip = zipfile.ZipFile(self.imgzippath)
 
     def string(self):
-        return self.__class__.__name__ + " num_samples={} views={} data_aug={}".format(len(self), self.views, self.data_aug)
+        return (
+            self.__class__.__name__
+            + f" num_samples={len(self)} views={self.views} data_aug={self.data_aug}"
+        )
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
 
-        sample = {}
-        sample["idx"] = idx
-        sample["lab"] = self.labels[idx]
+        sample = {"idx": idx, "lab": self.labels[idx]}
         imgid = self.csv.iloc[idx]["image_name"]
 
         with zipfile.ZipFile(self.imgzippath).open("train/" + imgid) as file:
@@ -2033,18 +2037,14 @@ class CovariateDataset(Dataset):
 
     def __repr__(self):
         pprint.pprint(self.totals())
-        return self.__class__.__name__ + " num_samples={}".format(len(self))
+        return self.__class__.__name__ + f" num_samples={len(self)}"
 
     def __len__(self):
         return len(self.imageids)
 
     def __getitem__(self, idx):
 
-        if self.site[idx] == 0:
-            dataset = self.d1
-        else:
-            dataset = self.d2
-
+        dataset = self.d1 if self.site[idx] == 0 else self.d2
         sample = dataset[self.imageids[idx]]
 
         # Replace the labels with the specific label we focus on

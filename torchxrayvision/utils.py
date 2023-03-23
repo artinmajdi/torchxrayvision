@@ -4,9 +4,7 @@ def in_notebook():
         from IPython import get_ipython
         if 'IPKernelApp' not in get_ipython().config:  # pragma: no cover
             return False
-    except ImportError:
-        return False
-    except AttributeError:
+    except (ImportError, AttributeError):
         return False
     return True
 

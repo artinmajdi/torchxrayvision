@@ -27,12 +27,14 @@ class DenseNet(nn.Module):
 
         super(DenseNet, self).__init__()
 
-        url = "https://academictorrents.com/details/5c7ee21e6770308f2d2b4bd829e896dbd9d3ee87"
         self.weights_zip = weights_zip
         self.num_models = num_models
 
         if self.weights_zip == "":
-            raise Exception("Need to specify weights_zip file location. You can download them from {}".format(url))
+            url = "https://academictorrents.com/details/5c7ee21e6770308f2d2b4bd829e896dbd9d3ee87"
+            raise Exception(
+                f"Need to specify weights_zip file location. You can download them from {url}"
+            )
 
         self.use_gpu = torch.cuda.is_available()
         dirname = os.path.dirname(os.path.realpath(__file__))

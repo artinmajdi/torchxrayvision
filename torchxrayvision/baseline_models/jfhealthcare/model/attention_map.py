@@ -182,5 +182,4 @@ class AttentionMap(nn.Module):
         elif self.cfg.attention_map == "None":
             return feat_map
         else:
-            Exception('Unknown attention type : {}'
-                      .format(self.cfg.attention_map))
+            Exception(f'Unknown attention type : {self.cfg.attention_map}')

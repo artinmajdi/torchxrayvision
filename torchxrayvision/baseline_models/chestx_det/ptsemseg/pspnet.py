@@ -128,7 +128,4 @@ class pspnet(nn.Module):
         x = self.classification(x)
         x = F.upsample(x, size=inp_shape, mode="bilinear")#, align_corners=True)
 
-        if self.training:
-            return x_aux, x
-        else:  # eval mode
-            return x
+        return (x_aux, x) if self.training else x

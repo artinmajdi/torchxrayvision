@@ -26,9 +26,9 @@ def tqdm(*args, **kwargs):
 def train(model, dataset, cfg):
     print("Our config:")
     pprint.pprint(cfg)
-        
-    dataset_name = cfg.dataset + "-" + cfg.model + "-" + cfg.name
-    
+
+    dataset_name = f"{cfg.dataset}-{cfg.model}-{cfg.name}"
+
     device = 'cuda' if cfg.cuda else 'cpu'
     if not torch.cuda.is_available() and cfg.cuda:
         device = 'cpu'
@@ -40,7 +40,7 @@ def train(model, dataset, cfg):
 
     if not exists(cfg.output_dir):
         os.makedirs(cfg.output_dir)
-    
+
     # Setting the seed
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)
@@ -89,7 +89,7 @@ def train(model, dataset, cfg):
             [int(w[len(join(cfg.output_dir, f'{dataset_name}-e')):-len('.pt')].split('-')[0]) for w in weights_files])
         start_epoch = epochs.max()
         weights_file = [weights_files[i] for i in np.argwhere(epochs == np.amax(epochs)).flatten()][0]
-        
+
         with open(weights_file, 'rb') as f:
             state = torch.load(f, map_location=device)
             model.load_state_dict(state["model_state_dict"])
@@ -115,8 +115,8 @@ def train(model, dataset, cfg):
         model = torch.nn.DataParallel(model)
 
     model.to(device)
-    
-    
+
+
     for epoch in range(start_epoch, cfg.num_epochs):
 
         avg_loss = train_epoch(cfg=cfg,
@@ -127,7 +127,7 @@ def train(model, dataset, cfg):
                                train_loader=train_loader,
                                criterion=criterion,
                                limit=cfg.limit)
-        
+
         auc_valid = valid_test_epoch(name='Valid',
                                      epoch=epoch,
                                      model=model,

@@ -45,14 +45,16 @@ class Classifier(nn.Module):
             if BACKBONES_TYPES[self.cfg.backbone] == 'vgg':
                 setattr(
                     self,
-                    "fc_" + str(index),
+                    f"fc_{str(index)}",
                     nn.Conv2d(
                         512 * self.expand,
                         num_class,
                         kernel_size=1,
                         stride=1,
                         padding=0,
-                        bias=True))
+                        bias=True,
+                    ),
+                )
             elif BACKBONES_TYPES[self.cfg.backbone] == 'densenet':
                 setattr(
                     self,
@@ -69,20 +71,20 @@ class Classifier(nn.Module):
             elif BACKBONES_TYPES[self.cfg.backbone] == 'inception':
                 setattr(
                     self,
-                    "fc_" + str(index),
+                    f"fc_{str(index)}",
                     nn.Conv2d(
                         2048 * self.expand,
                         num_class,
                         kernel_size=1,
                         stride=1,
                         padding=0,
-                        bias=True))
-            else:
-                raise Exception(
-                    'Unknown backbone type : {}'.format(self.cfg.backbone)
+                        bias=True,
+                    ),
                 )
+            else:
+                raise Exception(f'Unknown backbone type : {self.cfg.backbone}')
 
-            classifier = getattr(self, "fc_" + str(index))
+            classifier = getattr(self, f"fc_{str(index)}")
             if isinstance(classifier, nn.Conv2d):
                 classifier.weight.data.normal_(0, 0.01)
                 classifier.bias.data.zero_()
@@ -90,8 +92,7 @@ class Classifier(nn.Module):
     def _init_bn(self):
         for index, num_class in enumerate(self.cfg.num_classes):
             if BACKBONES_TYPES[self.cfg.backbone] == 'vgg':
-                setattr(self, "bn_" + str(index),
-                        nn.BatchNorm2d(512 * self.expand))
+                setattr(self, f"bn_{str(index)}", nn.BatchNorm2d(512 * self.expand))
             elif BACKBONES_TYPES[self.cfg.backbone] == 'densenet':
                 setattr(
                     self,
@@ -101,12 +102,9 @@ class Classifier(nn.Module):
                         self.backbone.num_features *
                         self.expand))
             elif BACKBONES_TYPES[self.cfg.backbone] == 'inception':
-                setattr(self, "bn_" + str(index),
-                        nn.BatchNorm2d(2048 * self.expand))
+                setattr(self, f"bn_{str(index)}", nn.BatchNorm2d(2048 * self.expand))
             else:
-                raise Exception(
-                    'Unknown backbone type : {}'.format(self.cfg.backbone)
-                )
+                raise Exception(f'Unknown backbone type : {self.cfg.backbone}')
 
     def _init_attention_map(self):
         if BACKBONES_TYPES[self.cfg.backbone] == 'vgg':
@@ -121,9 +119,7 @@ class Classifier(nn.Module):
         elif BACKBONES_TYPES[self.cfg.backbone] == 'inception':
             setattr(self, "attention_map", AttentionMap(self.cfg, 2048))
         else:
-            raise Exception(
-                'Unknown backbone type : {}'.format(self.cfg.backbone)
-            )
+            raise Exception(f'Unknown backbone type : {self.cfg.backbone}')
 
     def cuda(self, device=None):
         return self._apply(lambda t: t.cuda(device))
@@ -132,25 +128,24 @@ class Classifier(nn.Module):
         # (N, C, H, W)
         feat_map = self.backbone(x)
         # [(N, 1), (N,1),...]
-        logits = list()
+        logits = []
         # [(N, H, W), (N, H, W),...]
-        logit_maps = list()
+        logit_maps = []
         for index, num_class in enumerate(self.cfg.num_classes):
             if self.cfg.attention_map != "None":
                 feat_map = self.attention_map(feat_map)
 
-            classifier = getattr(self, "fc_" + str(index))
+            classifier = getattr(self, f"fc_{str(index)}")
             # (N, 1, H, W)
             logit_map = None
-            if not (self.cfg.global_pool == 'AVG_MAX' or
-                    self.cfg.global_pool == 'AVG_MAX_LSE'):
+            if self.cfg.global_pool not in ['AVG_MAX', 'AVG_MAX_LSE']:
                 logit_map = classifier(feat_map)
                 logit_maps.append(logit_map.squeeze())
             # (N, C, 1, 1)
             feat = self.global_pool(feat_map, logit_map)
 
             if self.cfg.fc_bn:
-                bn = getattr(self, "bn_" + str(index))
+                bn = getattr(self, f"bn_{str(index)}")
                 feat = bn(feat)
             feat = F.dropout(feat, p=self.cfg.fc_drop, training=self.training)
             # (N, num_class, 1, 1)

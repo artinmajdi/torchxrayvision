@@ -13,15 +13,73 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-model_urls = {}
-
-model_urls['all'] = {
-    "description": 'This model was trained on the datasets: nih-pc-chex-mimic_ch-google-openi-rsna and is described here: https://arxiv.org/abs/2002.02497',
-    "weights_url": 'https://github.com/mlmed/torchxrayvision/releases/download/v1/nih-pc-chex-mimic_ch-google-openi-kaggle-densenet121-d121-tw-lr001-rot45-tr15-sc15-seed0-best.pt',
-    "labels": ['Atelectasis', 'Consolidation', 'Infiltration', 'Pneumothorax', 'Edema', 'Emphysema', 'Fibrosis', 'Effusion', 'Pneumonia', 'Pleural_Thickening', 'Cardiomegaly', 'Nodule', 'Mass', 'Hernia', 'Lung Lesion', 'Fracture', 'Lung Opacity', 'Enlarged Cardiomediastinum'],
-    "op_threshs": [0.07422872, 0.038290843, 0.09814756, 0.0098118475, 0.023601074, 0.0022490358, 0.010060724, 0.103246614, 0.056810737, 0.026791653, 0.050318155, 0.023985857, 0.01939503, 0.042889766, 0.053369623, 0.035975814, 0.20204692, 0.05015312],
-    "ppv80_thres": [0.72715247, 0.8885005, 0.92493945, 0.6527224, 0.68707734, 0.46127197, 0.7272054, 0.6127343, 0.9878492, 0.61979693, 0.66309816, 0.7853459, 0.930661, 0.93645346, 0.6788558, 0.6547198, 0.61614525, 0.8489876]
+model_urls = {
+    'all': {
+        "description": 'This model was trained on the datasets: nih-pc-chex-mimic_ch-google-openi-rsna and is described here: https://arxiv.org/abs/2002.02497',
+        "weights_url": 'https://github.com/mlmed/torchxrayvision/releases/download/v1/nih-pc-chex-mimic_ch-google-openi-kaggle-densenet121-d121-tw-lr001-rot45-tr15-sc15-seed0-best.pt',
+        "labels": [
+            'Atelectasis',
+            'Consolidation',
+            'Infiltration',
+            'Pneumothorax',
+            'Edema',
+            'Emphysema',
+            'Fibrosis',
+            'Effusion',
+            'Pneumonia',
+            'Pleural_Thickening',
+            'Cardiomegaly',
+            'Nodule',
+            'Mass',
+            'Hernia',
+            'Lung Lesion',
+            'Fracture',
+            'Lung Opacity',
+            'Enlarged Cardiomediastinum',
+        ],
+        "op_threshs": [
+            0.07422872,
+            0.038290843,
+            0.09814756,
+            0.0098118475,
+            0.023601074,
+            0.0022490358,
+            0.010060724,
+            0.103246614,
+            0.056810737,
+            0.026791653,
+            0.050318155,
+            0.023985857,
+            0.01939503,
+            0.042889766,
+            0.053369623,
+            0.035975814,
+            0.20204692,
+            0.05015312,
+        ],
+        "ppv80_thres": [
+            0.72715247,
+            0.8885005,
+            0.92493945,
+            0.6527224,
+            0.68707734,
+            0.46127197,
+            0.7272054,
+            0.6127343,
+            0.9878492,
+            0.61979693,
+            0.66309816,
+            0.7853459,
+            0.930661,
+            0.93645346,
+            0.6788558,
+            0.6547198,
+            0.61614525,
+            0.8489876,
+        ],
+    }
 }
+
 model_urls['densenet121-res224-all'] = model_urls['all']
 
 
@@ -151,9 +209,9 @@ class DenseNet(nn.Module):
         self.weights = weights
 
         if self.weights is not None:
-            if not self.weights in model_urls.keys():
+            if self.weights not in model_urls.keys():
                 possible_weights = [k for k in model_urls.keys() if k.startswith("densenet")]
-                raise Exception("Weights value must be in {}".format(possible_weights))
+                raise Exception(f"Weights value must be in {possible_weights}")
 
             # set to be what this model is trained to predict
             self.pathologies = model_urls[weights]["labels"]
@@ -227,7 +285,7 @@ class DenseNet(nn.Module):
 
     def __repr__(self):
         if self.weights is not None:
-            return "XRV-DenseNet121-{}".format(self.weights)
+            return f"XRV-DenseNet121-{self.weights}"
         else:
             return "XRV-DenseNet"
 
@@ -264,9 +322,9 @@ class ResNet(nn.Module):
         self.weights = weights
         self.apply_sigmoid = apply_sigmoid
 
-        if not self.weights in model_urls.keys():
+        if self.weights not in model_urls.keys():
             possible_weights = [k for k in model_urls.keys() if k.startswith("resnet")]
-            raise Exception("Weights value must be in {}".format(possible_weights))
+            raise Exception(f"Weights value must be in {possible_weights}")
 
         self.weights_filename_local = get_weights(weights)
         self.weights_dict = model_urls[weights]
@@ -296,10 +354,7 @@ class ResNet(nn.Module):
         self.eval()
 
     def __repr__(self):
-        if self.weights is not None:
-            return "XRV-ResNet-{}".format(self.weights)
-        else:
-            return "XRV-ResNet"
+        return "XRV-ResNet" if self.weights is None else f"XRV-ResNet-{self.weights}"
 
     def features(self, x):
         x = fix_resolution(x, 512, self)
@@ -341,12 +396,14 @@ def fix_resolution(x, resolution: int, model: nn.Module):
     """Check resolution of input and resize to match requested."""
 
     # just skip it if upsample was removed somehow
-    if not hasattr(model, 'upsample') or (model.upsample == None):
+    if not hasattr(model, 'upsample') or model.upsample is None:
         return x
 
     if (x.shape[2] != resolution) | (x.shape[3] != resolution):
-        if not hash(model) in warning_log:
-            print("Warning: Input size ({}x{}) is not the native resolution ({}x{}) for this model. A resize will be performed but this could impact performance.".format(x.shape[2], x.shape[3], resolution, resolution))
+        if hash(model) not in warning_log:
+            print(
+                f"Warning: Input size ({x.shape[2]}x{x.shape[3]}) is not the native resolution ({resolution}x{resolution}) for this model. A resize will be performed but this could impact performance."
+            )
             warning_log[hash(model)] = True
         return model.upsample(x)
     return x
@@ -360,10 +417,12 @@ def warn_normalization(x):
     """
 
     # Only run this check on the first image so we don't hurt performance.
-    if not "norm_check" in warning_log:
+    if "norm_check" not in warning_log:
         x_min = x.min()
         x_max = x.max()
-        if torch.logical_or(-255 < x_min, x_max < 255) or torch.logical_or(x_min < -1024, 1024 < x_max):
+        if torch.logical_or(x_min > -255, x_max < 255) or torch.logical_or(
+            x_min < -1024, x_max > 1024
+        ):
             print(f'Warning: Input image does not appear to be normalized correctly. The input image has the range [{x_min:.2f},{x_max:.2f}] which doesn\'t seem to be in the [-1024,1024] range. This warning may be wrong though. Only the first image is tested and we are only using a heuristic in an attempt to save a user from using the wrong normalization.')
             warning_log["norm_correct"] = False
         else:
@@ -401,15 +460,14 @@ def op_norm(outputs, op_threshs):
 def get_densenet_params(arch: str):
     assert 'dense' in arch
     if arch == 'densenet161':
-        ret = dict(growth_rate=48, block_config=(6, 12, 36, 24), num_init_features=96)
+        return dict(growth_rate=48, block_config=(6, 12, 36, 24), num_init_features=96)
     elif arch == 'densenet169':
-        ret = dict(growth_rate=32, block_config=(6, 12, 32, 32), num_init_features=64)
+        return dict(growth_rate=32, block_config=(6, 12, 32, 32), num_init_features=64)
     elif arch == 'densenet201':
-        ret = dict(growth_rate=32, block_config=(6, 12, 48, 32), num_init_features=64)
+        return dict(growth_rate=32, block_config=(6, 12, 48, 32), num_init_features=64)
     else:
         # default configuration: densenet121
-        ret = dict(growth_rate=32, block_config=(6, 12, 24, 16), num_init_features=64)
-    return ret
+        return dict(growth_rate=32, block_config=(6, 12, 24, 16), num_init_features=64)
 
 
 def get_model(weights: str, **kwargs):
@@ -422,8 +480,8 @@ def get_model(weights: str, **kwargs):
 
 
 def get_weights(weights: str):
-    if not weights in model_urls:
-        raise Exception("Weights not found. Valid options: {}".format(list(model_urls.keys())))
+    if weights not in model_urls:
+        raise Exception(f"Weights not found. Valid options: {list(model_urls.keys())}")
 
     url = model_urls[weights]["weights_url"]
     weights_filename = os.path.basename(url)
@@ -432,7 +490,7 @@ def get_weights(weights: str):
 
     if not os.path.isfile(weights_filename_local):
         print("Downloading weights...")
-        print("If this fails you can run `wget {} -O {}`".format(url, weights_filename_local))
+        print(f"If this fails you can run `wget {url} -O {weights_filename_local}`")
         pathlib.Path(weights_storage_folder).mkdir(parents=True, exist_ok=True)
         download(url, weights_filename_local)
 
@@ -450,10 +508,10 @@ def download(url: str, filename: str):
         else:
             downloaded = 0
             total = int(total)
-            for data in response.iter_content(chunk_size=max(int(total / 1000), 1024 * 1024)):
+            for data in response.iter_content(chunk_size=max(total // 1000, 1024 * 1024)):
                 downloaded += len(data)
                 f.write(data)
                 done = int(50 * downloaded / total)
-                sys.stdout.write('\r[{}{}]'.format('█' * done, '.' * (50 - done)))
+                sys.stdout.write(f"\r[{'█' * done}{'.' * (50 - done)}]")
                 sys.stdout.flush()
     sys.stdout.write('\n')

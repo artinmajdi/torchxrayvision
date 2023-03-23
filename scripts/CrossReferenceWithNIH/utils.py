@@ -40,7 +40,7 @@ def draw_confusion_matrix(cm, row_labels, col_labels, xlabel='Column Categories'
             elif normalized:            
                 txt = '{:.2f}'.format(cm[i,j])
             else:
-                txt = '{}'.format(int(cm[i,j]))
+                txt = f'{int(cm[i, j])}'
             ax.text(j, i, txt, horizontalalignment="center", verticalalignment='center', color= "black", fontsize=14)
 
     #np.set_printoptions(**po)

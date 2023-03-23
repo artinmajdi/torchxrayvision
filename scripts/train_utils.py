@@ -26,9 +26,9 @@ def tqdm(*args, **kwargs):
 def train(model, dataset, cfg):
     print("Our config:")
     pprint.pprint(cfg)
-        
-    dataset_name = cfg.dataset + "-" + cfg.model + "-" + cfg.name
-    
+
+    dataset_name = f"{cfg.dataset}-{cfg.model}-{cfg.name}"
+
     device = 'cuda' if cfg.cuda else 'cpu'
     if not torch.cuda.is_available() and cfg.cuda:
         device = 'cpu'
@@ -40,7 +40,7 @@ def train(model, dataset, cfg):
 
     if not exists(cfg.output_dir):
         os.makedirs(cfg.output_dir)
-    
+
     # Setting the seed
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)
@@ -101,7 +101,7 @@ def train(model, dataset, cfg):
         print("Weights loaded: {0}".format(weights_file))
 
     model.to(device)
-    
+
     for epoch in range(start_epoch, cfg.num_epochs):
 
         avg_loss = train_epoch(cfg=cfg,
@@ -111,7 +111,7 @@ def train(model, dataset, cfg):
                                optimizer=optim,
                                train_loader=train_loader,
                                criterion=criterion)
-        
+
         auc_valid = valid_test_epoch(name='Valid',
                                      epoch=epoch,
                                      model=model,
@@ -154,7 +154,7 @@ def train_epoch(cfg, epoch, model, device, train_loader, optimizer, criterion, l
         weights = weights/weights.max()
         weights = torch.from_numpy(weights).to(device).float()
         print("task weights", weights)
-    
+
     avg_loss = []
     t = tqdm(train_loader)
     for batch_idx, samples in enumerate(t):
@@ -162,14 +162,14 @@ def train_epoch(cfg, epoch, model, device, train_loader, optimizer, criterion, l
         if limit and (batch_idx > limit):
             print("breaking out")
             break
-            
+
         optimizer.zero_grad()
-        
+
         images = samples["img"].float().to(device)
         targets = samples["lab"].to(device)
 
         outputs = model(images)
-        
+
         loss = torch.zeros(1).to(device).float()
         for task in range(targets.shape[1]):
             task_output = outputs[:,task]
@@ -179,11 +179,7 @@ def train_epoch(cfg, epoch, model, device, train_loader, optimizer, criterion, l
             task_target = task_target[mask]
             if len(task_target) > 0:
                 task_loss = criterion(task_output.float(), task_target.float())
-                if cfg.taskweights:
-                    loss += weights[task]*task_loss
-                else:
-                    loss += task_loss
-        
+                loss += weights[task]*task_loss if cfg.taskweights else task_loss
         # here regularize the weight matrix when label_concat is used
         if cfg.label_concat_reg:
             if not cfg.label_concat:
@@ -196,16 +192,16 @@ def train_epoch(cfg, epoch, model, device, train_loader, optimizer, criterion, l
             for task in range(num_labels):
                 dists = torch.pdist(weight_stacked[:,task], p=2).mean()
                 loss += label_concat_reg_lambda*dists
-                
+
         loss = loss.sum()
-        
+
         if cfg.featurereg:
             feat = model.features(images)
             loss += feat.abs().sum()
-            
+
         if cfg.weightreg:
             loss += model.classifier.weight.abs().sum()
-        
+
         loss.backward()
 
         avg_loss.append(loss.detach().cpu().numpy())

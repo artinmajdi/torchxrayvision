@@ -12,11 +12,12 @@ class PcamPool(nn.Module):
 
         prob_map = torch.sigmoid(logit_map)
         weight_map = prob_map / prob_map.sum(dim=2, keepdim=True)\
+                .sum(dim=3, keepdim=True)
+        return (
+            (feat_map * weight_map)
+            .sum(dim=2, keepdim=True)
             .sum(dim=3, keepdim=True)
-        feat = (feat_map * weight_map).sum(dim=2, keepdim=True)\
-            .sum(dim=3, keepdim=True)
-
-        return feat
+        )
 
 
 class LogSumExpPool(nn.Module):
@@ -150,5 +151,4 @@ class GlobalPool(nn.Module):
         elif self.cfg.global_pool == 'LSE':
             return self.lse_pool(feat_map)
         else:
-            raise Exception('Unknown pooling type : {}'
-                            .format(self.cfg.global_pool))
+            raise Exception(f'Unknown pooling type : {self.cfg.global_pool}')

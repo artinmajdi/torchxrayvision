@@ -107,24 +107,21 @@ class DenseNet(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight)
-            elif isinstance(m, nn.BatchNorm2d):
+            elif (
+                isinstance(m, nn.BatchNorm2d)
+                or not isinstance(m, nn.Linear)
+                and isinstance(m, nn.GroupNorm)
+                or not isinstance(m, nn.Linear)
+                and isinstance(m, nn.InstanceNorm2d)
+            ):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
                 nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.GroupNorm):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.InstanceNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         features = self.features(x)
-        out = F.relu(features, inplace=True)
-        # out = F.adaptive_avg_pool2d(out, (1, 1)).view(features.size(0), -1)
-        # out = self.classifier(out)
-        return out
+        return F.relu(features, inplace=True)
 
 
 def densenet121(cfg, **kwargs):
@@ -145,9 +142,8 @@ def densenet121(cfg, **kwargs):
             r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')  # noqa
         state_dict = model_zoo.load_url(model_urls['densenet121'])
         for key in list(state_dict.keys()):
-            res = pattern.match(key)
-            if res:
-                new_key = res.group(1) + res.group(2)
+            if res := pattern.match(key):
+                new_key = res[1] + res[2]
                 state_dict[new_key] = state_dict[key]
                 del state_dict[key]
         model.load_state_dict(state_dict, strict=False)
@@ -172,9 +168,8 @@ def densenet169(cfg, **kwargs):
             r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')  # noqa
         state_dict = model_zoo.load_url(model_urls['densenet169'])
         for key in list(state_dict.keys()):
-            res = pattern.match(key)
-            if res:
-                new_key = res.group(1) + res.group(2)
+            if res := pattern.match(key):
+                new_key = res[1] + res[2]
                 state_dict[new_key] = state_dict[key]
                 del state_dict[key]
         model.load_state_dict(state_dict, strict=False)
@@ -199,9 +194,8 @@ def densenet201(cfg, **kwargs):
             r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')  # noqa
         state_dict = model_zoo.load_url(model_urls['densenet201'])
         for key in list(state_dict.keys()):
-            res = pattern.match(key)
-            if res:
-                new_key = res.group(1) + res.group(2)
+            if res := pattern.match(key):
+                new_key = res[1] + res[2]
                 state_dict[new_key] = state_dict[key]
                 del state_dict[key]
         model.load_state_dict(state_dict, strict=False)
@@ -226,9 +220,8 @@ def densenet161(cfg, **kwargs):
             r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')  # noqa
         state_dict = model_zoo.load_url(model_urls['densenet161'])
         for key in list(state_dict.keys()):
-            res = pattern.match(key)
-            if res:
-                new_key = res.group(1) + res.group(2)
+            if res := pattern.match(key):
+                new_key = res[1] + res[2]
                 state_dict[new_key] = state_dict[key]
                 del state_dict[key]
         model.load_state_dict(state_dict, strict=False)

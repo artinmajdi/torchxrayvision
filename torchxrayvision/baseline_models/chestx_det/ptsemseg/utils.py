@@ -34,8 +34,7 @@ class conv2DBatchNorm(nn.Module):
             self.cb_unit = nn.Sequential(conv_mod)
 
     def forward(self, inputs):
-        outputs = self.cb_unit(inputs)
-        return outputs
+        return self.cb_unit(inputs)
 
 
 class conv2DGroupNorm(nn.Module):
@@ -64,8 +63,7 @@ class conv2DGroupNorm(nn.Module):
                                      nn.GroupNorm(n_groups, int(n_filters)))
 
     def forward(self, inputs):
-        outputs = self.cg_unit(inputs)
-        return outputs
+        return self.cg_unit(inputs)
 
 
 class deconv2DBatchNorm(nn.Module):
@@ -85,8 +83,7 @@ class deconv2DBatchNorm(nn.Module):
         )
 
     def forward(self, inputs):
-        outputs = self.dcb_unit(inputs)
-        return outputs
+        return self.dcb_unit(inputs)
 
 
 class conv2DBatchNormRelu(nn.Module):
@@ -119,8 +116,7 @@ class conv2DBatchNormRelu(nn.Module):
             self.cbr_unit = nn.Sequential(conv_mod, nn.ReLU(inplace=True))
 
     def forward(self, inputs):
-        outputs = self.cbr_unit(inputs)
-        return outputs
+        return self.cbr_unit(inputs)
 
 
 class conv2DGroupNormRelu(nn.Module):
@@ -150,8 +146,7 @@ class conv2DGroupNormRelu(nn.Module):
                                       nn.ReLU(inplace=True))
 
     def forward(self, inputs):
-        outputs = self.cgr_unit(inputs)
-        return outputs
+        return self.cgr_unit(inputs)
 
 
 
@@ -173,8 +168,7 @@ class deconv2DBatchNormRelu(nn.Module):
         )
 
     def forward(self, inputs):
-        outputs = self.dcbr_unit(inputs)
-        return outputs
+        return self.dcbr_unit(inputs)
 
 
 class unetConv2(nn.Module):
@@ -531,21 +525,18 @@ class pyramidPooling(nn.Module):
         bias = not with_bn
 
         self.paths = []
-        for i in range(len(pool_sizes)):
-            #if pool_sizes[i] == 1:
-            #    with_bn = False
-            self.paths.append(
-                conv2DBatchNormRelu(
-                    in_channels,
-                    int(in_channels / len(pool_sizes)),
-                    1,
-                    1,
-                    0,
-                    bias=bias,
-                    with_bn=with_bn,
-                )
+        self.paths.extend(
+            conv2DBatchNormRelu(
+                in_channels,
+                int(in_channels / len(pool_sizes)),
+                1,
+                1,
+                0,
+                bias=bias,
+                with_bn=with_bn,
             )
-
+            for _ in range(len(pool_sizes))
+        )
         self.path_module_list = nn.ModuleList(self.paths)
         self.pool_sizes = pool_sizes
         self.model_name = model_name
@@ -742,13 +733,12 @@ class residualBlockPSP(nn.Module):
                 )
             )
         if include_range in ["all", "identity"]:
-            for i in range(n_blocks - 1):
-                layers.append(
-                    bottleNeckIdentifyPSP(
-                        out_channels, mid_channels, stride, dilation, with_bn=with_bn
-                    )
+            layers.extend(
+                bottleNeckIdentifyPSP(
+                    out_channels, mid_channels, stride, dilation, with_bn=with_bn
                 )
-
+                for _ in range(n_blocks - 1)
+            )
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -817,8 +807,7 @@ def get_interp_size(input, s_factor=1, z_factor=1):  # for caffe
     ori_h = ori_h + (ori_h - 1) * (z_factor - 1)
     ori_w = ori_w + (ori_w - 1) * (z_factor - 1)
 
-    resize_shape = (int(ori_h), int(ori_w))
-    return resize_shape
+    return int(ori_h), int(ori_w)
 
 
 def interp(input, output_size, mode="bilinear"):
@@ -843,10 +832,7 @@ def interp(input, output_size, mode="bilinear"):
 def get_upsampling_weight(in_channels, out_channels, kernel_size):
     """Make a 2D bilinear kernel suitable for upsampling"""
     factor = (kernel_size + 1) // 2
-    if kernel_size % 2 == 1:
-        center = factor - 1
-    else:
-        center = factor - 0.5
+    center = factor - 1 if kernel_size % 2 == 1 else factor - 0.5
     og = np.ogrid[:kernel_size, :kernel_size]
     filt = (1 - abs(og[0] - center) / factor) * \
            (1 - abs(og[1] - center) / factor)

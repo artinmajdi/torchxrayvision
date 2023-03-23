@@ -21,7 +21,9 @@ def uncertain_logits_to_probs(logits):
     b, n_times_d = logits.size()
     d = 3
     if n_times_d % d:
-        raise ValueError('Expected logits dimension to be divisible by {}, got size {}.'.format(d, n_times_d))
+        raise ValueError(
+            f'Expected logits dimension to be divisible by {d}, got size {n_times_d}.'
+        )
     n = n_times_d // d
 
     logits = logits.view(b, n, d)
@@ -75,15 +77,7 @@ class Model(nn.Module):
         preds = self(x)
         probs = self.get_probs(preds)[0]
 
-        task2results = {}
-        for task in tasks:
-
-            idx = self.task_sequence[task]
-            #task_prob = probs.detach().cpu().numpy()[idx]
-            task_prob = probs[idx]
-            task2results[task] = task_prob
-
-        return task2results
+        return {task: probs[self.task_sequence[task]] for task in tasks}
 
 
 class DenseNet121(Model):
@@ -125,11 +119,7 @@ class Tasks2Models(object):
         self.use_gpu = use_gpu
         self.weights_zip = zipfile.ZipFile(weights_zip)
 
-        if dynamic:
-            model_loader = self.model_iterator
-        else:
-            model_loader = self.model_list
-
+        model_loader = self.model_iterator if dynamic else self.model_list
         model_dicts2tasks = {}
         for task, model_dicts in self.task2model_dicts.items():
             hashable_model_dict = self.get_hashable(model_dicts)
@@ -145,14 +135,16 @@ class Tasks2Models(object):
             tasks = tuple(model_dicts2tasks[hashable_model_dict])
 
             if tasks not in self.tasks2models:
-                self.tasks2models[tasks] = model_loader(model_dicts,
-                                                        num_models=num_models,
-                                                        desc="Loading weights {}".format(tasks))
+                self.tasks2models[tasks] = model_loader(
+                    model_dicts,
+                    num_models=num_models,
+                    desc=f"Loading weights {tasks}",
+                )
 
         self.tasks = list(self.task2model_dicts.keys())
 
     def get_hashable(self, model_dicts):
-        return tuple([tuple(model_dict.items()) for model_dict in model_dicts])
+        return tuple(tuple(model_dict.items()) for model_dict in model_dicts)
 
     @property
     def module(self):
@@ -178,7 +170,9 @@ class Tasks2Models(object):
         elif agg_method == 'mean':
             self.aggregation_fn = torch.mean
         else:
-            raise ValueError('Invalid configuration: {} = {} (expected "max" or "mean")'.format('aggregation_method', agg_method))
+            raise ValueError(
+                f'Invalid configuration: aggregation_method = {agg_method} (expected "max" or "mean")'
+            )
 
     def model_iterator(self, model_dicts, num_models, desc=""):
 
@@ -226,15 +220,18 @@ class Tasks2Models(object):
                 else:
                     task2ensemble_results[task].append(individual_task2results[task])
 
-        assert all([task in task2ensemble_results for task in tasks]),\
-            "Not all tasks in task2ensemble_results"
+        assert all(
+            task in task2ensemble_results for task in tasks
+        ), "Not all tasks in task2ensemble_results"
 
         task2results = {}
         for task in tasks:
             ensemble_probs = task2ensemble_results[task]
             task2results[task] = self.aggregation_fn(torch.stack(ensemble_probs), dim=0)
 
-        assert all([task in task2results for task in tasks]), "Not all tasks in task2results"
+        assert all(
+            task in task2results for task in tasks
+        ), "Not all tasks in task2results"
 
         return task2results
 

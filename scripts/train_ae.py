@@ -70,55 +70,76 @@ datas = []
 datas_names = []
 if "nih" in cfg.dataset:
     dataset = xrv.datasets.NIH_Dataset(
-        imgpath=cfg.dataset_dir + "/NIH/images-224", 
-        transform=transforms, data_aug=data_aug, unique_patients=False)
+        imgpath=f"{cfg.dataset_dir}/NIH/images-224",
+        transform=transforms,
+        data_aug=data_aug,
+        unique_patients=False,
+    )
     datas.append(dataset)
     datas_names.append("nih")
 if "pc" in cfg.dataset:
     dataset = xrv.datasets.PC_Dataset(
-        imgpath=cfg.dataset_dir + "/PC/images-224",
-        transform=transforms, data_aug=data_aug, unique_patients=False)
+        imgpath=f"{cfg.dataset_dir}/PC/images-224",
+        transform=transforms,
+        data_aug=data_aug,
+        unique_patients=False,
+    )
     datas.append(dataset)
     datas_names.append("pc")
 if "chex" in cfg.dataset:
     dataset = xrv.datasets.CheX_Dataset(
-        imgpath=cfg.dataset_dir + "/CheXpert-v1.0-small",
-        csvpath=cfg.dataset_dir + "/CheXpert-v1.0-small/train.csv",
-        transform=transforms, data_aug=data_aug, unique_patients=False)
+        imgpath=f"{cfg.dataset_dir}/CheXpert-v1.0-small",
+        csvpath=f"{cfg.dataset_dir}/CheXpert-v1.0-small/train.csv",
+        transform=transforms,
+        data_aug=data_aug,
+        unique_patients=False,
+    )
     datas.append(dataset)
     datas_names.append("chex")
 if "google" in cfg.dataset:
     dataset = xrv.datasets.NIH_Google_Dataset(
-        imgpath=cfg.dataset_dir + "/NIH/images-224",
-        transform=transforms, data_aug=data_aug)
+        imgpath=f"{cfg.dataset_dir}/NIH/images-224",
+        transform=transforms,
+        data_aug=data_aug,
+    )
     datas.append(dataset)
     datas_names.append("google")
 if "mimic_ch" in cfg.dataset:
     dataset = xrv.datasets.MIMIC_Dataset(
-        imgpath=cfg.dataset_dir + "/images-224-MIMIC/files",
-        csvpath=cfg.dataset_dir + "/MIMICCXR-2.0/mimic-cxr-2.0.0-chexpert.csv.gz",
-        metacsvpath=cfg.dataset_dir + "/MIMICCXR-2.0/mimic-cxr-2.0.0-metadata.csv.gz",
-        transform=transforms, data_aug=data_aug, unique_patients=False)
+        imgpath=f"{cfg.dataset_dir}/images-224-MIMIC/files",
+        csvpath=f"{cfg.dataset_dir}/MIMICCXR-2.0/mimic-cxr-2.0.0-chexpert.csv.gz",
+        metacsvpath=f"{cfg.dataset_dir}/MIMICCXR-2.0/mimic-cxr-2.0.0-metadata.csv.gz",
+        transform=transforms,
+        data_aug=data_aug,
+        unique_patients=False,
+    )
     datas.append(dataset)
     datas_names.append("mimic_ch")
 if "mimic_nb" in cfg.dataset:
     dataset = xrv.datasets.MIMIC_Dataset(
-        imgpath=cfg.dataset_dir + "/MIMIC/images-224/files",
-        csvpath=cfg.dataset_dir + "/MIMICCXR-2.0/mimic-cxr-2.0.0-negbio.csv.gz",
-        metacsvpath=cfg.dataset_dir + "/MIMICCXR-2.0/mimic-cxr-2.0.0-metadata.csv.gz",
-        transform=transforms, data_aug=data_aug)
+        imgpath=f"{cfg.dataset_dir}/MIMIC/images-224/files",
+        csvpath=f"{cfg.dataset_dir}/MIMICCXR-2.0/mimic-cxr-2.0.0-negbio.csv.gz",
+        metacsvpath=f"{cfg.dataset_dir}/MIMICCXR-2.0/mimic-cxr-2.0.0-metadata.csv.gz",
+        transform=transforms,
+        data_aug=data_aug,
+    )
     datas.append(dataset)
     datas_names.append("mimic_nb")
 if "openi" in cfg.dataset:
     dataset = xrv.datasets.Openi_Dataset(
-        imgpath=cfg.dataset_dir + "/OpenI/images/",
-        transform=transforms, data_aug=data_aug)
+        imgpath=f"{cfg.dataset_dir}/OpenI/images/",
+        transform=transforms,
+        data_aug=data_aug,
+    )
     datas.append(dataset)
     datas_names.append("openi")
 if "rsna" in cfg.dataset:
     dataset = xrv.datasets.RSNA_Pneumonia_Dataset(
-        imgpath=cfg.dataset_dir + "/kaggle-pneumonia-jpg/stage_2_train_images_jpg",
-        transform=transforms, data_aug=data_aug, unique_patients=False)
+        imgpath=f"{cfg.dataset_dir}/kaggle-pneumonia-jpg/stage_2_train_images_jpg",
+        transform=transforms,
+        data_aug=data_aug,
+        unique_patients=False,
+    )
     datas.append(dataset)
     datas_names.append("rsna")
 
@@ -132,20 +153,19 @@ for d in datas:
 #cut out training sets
 train_datas = []
 test_datas = []
-for i, dataset in enumerate(datas):
-
+for dataset in datas:
     gss = sklearn.model_selection.GroupShuffleSplit(train_size=0.8,test_size=0.2, random_state=cfg.seed)
     train_inds, test_inds = next(gss.split(X=range(len(dataset)), groups=dataset.csv.patientid))
     train_dataset = xrv.datasets.SubsetDataset(dataset, train_inds)
     test_dataset = xrv.datasets.SubsetDataset(dataset, test_inds)
-    
+
     #disable data aug
     test_dataset.data_aug = None
-    
+
     train_datas.append(train_dataset)
     test_datas.append(test_dataset)
-    
-if len(datas) == 0:
+
+if not datas:
     raise Exception("no dataset")
 elif len(datas) == 1:
     train_dataset = train_datas[0]
@@ -169,7 +189,7 @@ print("train_dataset.labels.shape", train_dataset.labels.shape)
 print("test_dataset.labels.shape", test_dataset.labels.shape)
 print("train_dataset",train_dataset)
 print("test_dataset",test_dataset)
-    
+
 # create models
 
 #import models3
@@ -190,12 +210,12 @@ if cfg.model == "resnet101-2":
     model  = xrv.models_ae.ResNet_autoencoder2(xrv.models_ae.Bottleneck, 
                                                xrv.models_ae.DeconvBottleneck, 
                                                [3, 4, 23, 2], 1)
-    
+
 if cfg.model == "resnet151-2":
     model  = xrv.models_ae.ResNet_autoencoder2(xrv.models_ae.Bottleneck, 
                                                xrv.models_ae.DeconvBottleneck, 
                                                [3, 8, 36, 3], 1)
-    
+
 if cfg.model == "resnet50-3":
     model  = xrv.models_ae.ResNet_autoencoder3(xrv.models_ae.Bottleneck, 
                                                xrv.models_ae.DeconvBottleneck, 
@@ -205,7 +225,7 @@ if cfg.model == "resnet101-3":
                                                xrv.models_ae.DeconvBottleneck, 
                                                [3, 4, 23, 2], 1)
 
-    
+
 if cfg.model == "resnet50-4":
     model  = xrv.models_ae.ResNet_autoencoder4(xrv.models_ae.Bottleneck, 
                                                xrv.models_ae.DeconvBottleneck, 
@@ -219,7 +239,7 @@ if cfg.model == "resnet151-4":
     model  = xrv.models_ae.ResNet_autoencoder4(xrv.models_ae.Bottleneck, 
                                                xrv.models_ae.DeconvBottleneck, 
                                                [3, 8, 36, 3], 1)
-    
+
 train_utils_ae.train(model, train_dataset, cfg)
 
 
